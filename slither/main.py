@@ -3,368 +3,561 @@ import random
 import math
 import os
 
-# Initialize Pygame
+# Inicializar Pygame
 pygame.init()
 try:
     pygame.mixer.init()
-    audio_available = True
+    audio_disponible = True
 except pygame.error:
-    print("Audio not available. Running without sound.")
-    audio_available = False
+    print("Audio no disponible. Ejecutando sin sonido.")
+    audio_disponible = False
 
-# Constants
-WIDTH, HEIGHT = 800, 600
+# Constantes
+ANCHO, ALTO = 800, 600
 FPS = 60
-SNAKE_SPEED = 3
-FOOD_SIZE = 5
-INITIAL_SNAKE_SIZE = 10
-MAX_FOOD = 100
+VELOCIDAD_GUSANO = 3
+TAMAÑO_COMIDA = 5
+TAMAÑO_INICIAL_GUSANO = 10
+COMIDA_MAXIMA = 100
 
-# Colors
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
-BLUE = (0, 0, 255)
-YELLOW = (255, 255, 0)
-PURPLE = (128, 0, 128)
-CYAN = (0, 255, 255)
+# Colores
+NEGRO = (0, 0, 0)
+BLANCO = (255, 255, 255)
+ROJO = (255, 0, 0)
+VERDE = (0, 255, 0)
+AZUL = (0, 0, 255)
+AMARILLO = (255, 255, 0)
+PURPURA = (128, 0, 128)
+CIAN = (0, 255, 255)
+NARANJA = (255, 165, 0)
+ROSA = (255, 192, 203)
+LIMA = (50, 205, 50)
+MAGENTA = (255, 0, 255)
 
-# Player colors
-PLAYER_COLORS = [GREEN, BLUE, YELLOW, PURPLE]
+# Colores de jugadores para IA
+COLORES_JUGADORES = [VERDE, AZUL, AMARILLO, PURPURA]
 
-# Set up the display
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Slither.io Clone")
-clock = pygame.time.Clock()
+# Colores disponibles para personalización
+COLORES_DISPONIBLES = [
+    ("Verde", VERDE),
+    ("Azul", AZUL),
+    ("Amarillo", AMARILLO),
+    ("Púrpura", PURPURA),
+    ("Naranja", NARANJA),
+    ("Rosa", ROSA),
+    ("Lima", LIMA),
+    ("Magenta", MAGENTA)
+]
 
-# Load sounds (we'll add sound files later)
-if audio_available:
+# Configurar la pantalla
+pantalla = pygame.display.set_mode((ANCHO, ALTO))
+pygame.display.set_caption("Slither.io Clon")
+reloj = pygame.time.Clock()
+
+# Cargar sonidos
+if audio_disponible:
     try:
-        eat_sound = pygame.mixer.Sound('eat.wav')
-        death_sound = pygame.mixer.Sound('death.wav')
-        background_music = pygame.mixer.Sound('background.wav')
-        background_music.play(-1)  # Loop background music
+        sonido_comer = pygame.mixer.Sound('eat.wav')
+        sonido_muerte = pygame.mixer.Sound('death.wav')
+        musica_fondo = pygame.mixer.Sound('background.wav')
+        musica_fondo.play(-1)  # Reproducir música de fondo en bucle
     except:
-        print("Sound files not found. Running without sound.")
-        eat_sound = None
-        death_sound = None
-        background_music = None
+        print("Archivos de sonido no encontrados. Ejecutando sin sonido.")
+        sonido_comer = None
+        sonido_muerte = None
+        musica_fondo = None
 else:
-    eat_sound = None
-    death_sound = None
-    background_music = None
+    sonido_comer = None
+    sonido_muerte = None
+    musica_fondo = None
 
-class Snake:
-    def __init__(self, x, y, color, is_ai=False):
-        self.body = [(x, y)]
-        self.direction = random.choice([(1, 0), (-1, 0), (0, 1), (0, -1)])
+class Gusano:
+    def __init__(self, x, y, color, es_ia=False):
+        self.cuerpo = [(x, y)]
+        self.direccion = random.choice([(1, 0), (-1, 0), (0, 1), (0, -1)])
         self.color = color
-        self.score = 0
-        self.alive = True
-        self.is_ai = is_ai
-        self.target_food = None
+        self.puntuacion = 0
+        self.vivo = True
+        self.es_ia = es_ia
+        self.comida_objetivo = None
 
-    def move(self):
-        if not self.alive:
+    def mover(self):
+        if not self.vivo:
             return
 
-        head = self.body[0]
-        dx, dy = self.direction
+        cabeza = self.cuerpo[0]
+        dx, dy = self.direccion
 
-        # Calculate new head position
-        new_head = (head[0] + dx * SNAKE_SPEED, head[1] + dy * SNAKE_SPEED)
+        # Calcular nueva posición de la cabeza
+        nueva_cabeza = (cabeza[0] + dx * VELOCIDAD_GUSANO, cabeza[1] + dy * VELOCIDAD_GUSANO)
 
-        # Wrap around screen edges
-        new_head = (new_head[0] % WIDTH, new_head[1] % HEIGHT)
+        # Envolver en los bordes de la pantalla
+        nueva_cabeza = (nueva_cabeza[0] % ANCHO, nueva_cabeza[1] % ALTO)
 
-        self.body.insert(0, new_head)
+        self.cuerpo.insert(0, nueva_cabeza)
 
-        # Remove tail unless growing
-        if len(self.body) > INITIAL_SNAKE_SIZE + self.score:
-            self.body.pop()
+        # Eliminar cola a menos que esté creciendo
+        if len(self.cuerpo) > TAMAÑO_INICIAL_GUSANO + self.puntuacion:
+            self.cuerpo.pop()
 
-    def grow(self):
-        self.score += 1
+    def crecer(self):
+        self.puntuacion += 1
 
-    def draw(self, screen):
-        if not self.alive:
+    def dibujar(self, pantalla):
+        if not self.vivo:
             return
 
-        for i, segment in enumerate(self.body):
-            # Make head slightly larger and different color
-            size = FOOD_SIZE + 2 if i == 0 else FOOD_SIZE
+        for i, segmento in enumerate(self.cuerpo):
+            # Hacer la cabeza un poco más grande y de otro color
+            tamaño = TAMAÑO_COMIDA + 2 if i == 0 else TAMAÑO_COMIDA
             color = self.color if i == 0 else tuple(max(0, c - 50) for c in self.color)
-            pygame.draw.circle(screen, color, (int(segment[0]), int(segment[1])), size)
+            pygame.draw.circle(pantalla, color, (int(segmento[0]), int(segmento[1])), tamaño)
 
-    def check_collision(self, other_snakes, food_list):
-        if not self.alive:
+    def revisar_colision(self, otros_gusanos, lista_comida):
+        if not self.vivo:
             return
 
-        head = self.body[0]
+        cabeza = self.cuerpo[0]
 
-        # Check collision with other snakes
-        for snake in other_snakes:
-            if snake == self or not snake.alive:
+        # Revisar colisión con otros gusanos
+        for gusano in otros_gusanos:
+            if gusano == self or not gusano.vivo:
                 continue
 
-            for i, segment in enumerate(snake.body):
-                distance = math.hypot(head[0] - segment[0], head[1] - segment[1])
-                if distance < FOOD_SIZE + 5:
-                    # If hitting another snake's head and you're bigger, you can eat them
-                    if i == 0:  # Head collision
-                        if len(self.body) > len(snake.body) * 1.2:  # You must be significantly bigger
-                            snake.alive = False
-                            self.score += snake.score // 2  # Gain half their score
-                            if death_sound:
-                                death_sound.play()
-                        elif len(snake.body) > len(self.body) * 1.2:
-                            # They eat you
-                            self.alive = False
-                            snake.score += self.score // 2
-                            if death_sound:
-                                death_sound.play()
-                    else:  # Body collision - always deadly
-                        self.alive = False
-                        if death_sound:
-                            death_sound.play()
+            for i, segmento in enumerate(gusano.cuerpo):
+                distancia = math.hypot(cabeza[0] - segmento[0], cabeza[1] - segmento[1])
+                if distancia < TAMAÑO_COMIDA + 5:
+                    # Si golpeas la cabeza de otro gusano y eres más grande, puedes comerlo
+                    if i == 0:  # Colisión de cabeza
+                        if len(self.cuerpo) > len(gusano.cuerpo) * 1.2:  # Debes ser significativamente más grande
+                            gusano.vivo = False
+                            self.puntuacion += gusano.puntuacion // 2  # Gana la mitad de su puntuación
+                            if sonido_muerte:
+                                sonido_muerte.play()
+                        elif len(gusano.cuerpo) > len(self.cuerpo) * 1.2:
+                            # Te comen
+                            self.vivo = False
+                            gusano.puntuacion += self.puntuacion // 2
+                            if sonido_muerte:
+                                sonido_muerte.play()
+                    else:  # Colisión de cuerpo - siempre mortal
+                        self.vivo = False
+                        if sonido_muerte:
+                            sonido_muerte.play()
                     return
 
-        # Check collision with food
-        for food in food_list[:]:
-            if math.hypot(head[0] - food[0], head[1] - food[1]) < FOOD_SIZE + 5:
-                food_list.remove(food)
-                self.grow()
-                if eat_sound:
-                    eat_sound.play()
+        # Revisar colisión con comida
+        for comida in lista_comida[:]:
+            if math.hypot(cabeza[0] - comida[0], cabeza[1] - comida[1]) < TAMAÑO_COMIDA + 5:
+                lista_comida.remove(comida)
+                self.crecer()
+                if sonido_comer:
+                    sonido_comer.play()
 
-    def ai_move(self, food_list, all_snakes):
-        if not self.is_ai or not self.alive:
+    def movimiento_ia(self, lista_comida, todos_gusanos):
+        if not self.es_ia or not self.vivo:
             return
 
-        head = self.body[0]
+        cabeza = self.cuerpo[0]
 
-        # Find closest food
-        closest_food = None
-        min_distance = float('inf')
-        for food in food_list:
-            distance = math.hypot(head[0] - food[0], head[1] - food[1])
-            if distance < min_distance:
-                min_distance = distance
-                closest_food = food
+        # Encontrar comida más cercana o a veces aleatoria
+        comida_objetivo = None
+        if random.random() < 0.7:  # 70% de probabilidad de apuntar al más cercano
+            distancia_minima = float('inf')
+            for comida in lista_comida:
+                distancia = math.hypot(cabeza[0] - comida[0], cabeza[1] - comida[1])
+                if distancia < distancia_minima:
+                    distancia_minima = distancia
+                    comida_objetivo = comida
+        else:  # 30% de probabilidad de apuntar a comida aleatoria
+            if lista_comida:
+                comida_objetivo = random.choice(lista_comida)
 
-        if closest_food:
-            # Check for dangerous snakes nearby
-            danger_close = False
-            for snake in all_snakes:
-                if snake == self or not snake.alive:
+        if comida_objetivo:
+            # Revisar gusanos peligrosos cercanos
+            peligro_cerca = False
+            for gusano in todos_gusanos:
+                if gusano == self or not gusano.vivo:
                     continue
-                if len(snake.body) > len(self.body) * 1.1:  # Bigger snake is dangerous
-                    snake_head = snake.body[0]
-                    distance_to_danger = math.hypot(head[0] - snake_head[0], head[1] - snake_head[1])
-                    if distance_to_danger < 100:  # Dangerously close
-                        danger_close = True
-                        # Move away from danger
-                        dx = head[0] - snake_head[0]
-                        dy = head[1] - snake_head[1]
-                        distance = math.hypot(dx, dy)
-                        if distance > 0:
-                            self.direction = (dx / distance, dy / distance)
+                if len(gusano.cuerpo) > len(self.cuerpo) * 1.1:  # Gusano más grande es peligroso
+                    cabeza_gusano = gusano.cuerpo[0]
+                    distancia_peligro = math.hypot(cabeza[0] - cabeza_gusano[0], cabeza[1] - cabeza_gusano[1])
+                    if distancia_peligro < 100:  # Peligrosamente cerca
+                        peligro_cerca = True
+                        # Alejarse del peligro
+                        dx = cabeza[0] - cabeza_gusano[0]
+                        dy = cabeza[1] - cabeza_gusano[1]
+                        distancia = math.hypot(dx, dy)
+                        if distancia > 0:
+                            self.direccion = (dx / distancia, dy / distancia)
                         break
 
-            if not danger_close:
-                # Move towards closest food
-                dx = closest_food[0] - head[0]
-                dy = closest_food[1] - head[1]
-                distance = math.hypot(dx, dy)
+            if not peligro_cerca:
+                # Moverse hacia comida objetivo
+                dx = comida_objetivo[0] - cabeza[0]
+                dy = comida_objetivo[1] - cabeza[1]
+                distancia = math.hypot(dx, dy)
 
-                if distance > 0:
-                    self.direction = (dx / distance, dy / distance)
+                if distancia > 0:
+                    self.direccion = (dx / distancia, dy / distancia)
         else:
-            # Random movement if no food, but try to avoid danger
-            danger_nearby = False
-            for snake in all_snakes:
-                if snake == self or not snake.alive:
+            # Movimiento aleatorio si no hay comida, pero intenta evitar peligro
+            peligro_cercano = False
+            for gusano in todos_gusanos:
+                if gusano == self or not gusano.vivo:
                     continue
-                if len(snake.body) > len(self.body):
-                    snake_head = snake.body[0]
-                    distance_to_danger = math.hypot(head[0] - snake_head[0], head[1] - snake_head[1])
-                    if distance_to_danger < 80:
-                        danger_nearby = True
-                        # Move away from danger
-                        dx = head[0] - snake_head[0]
-                        dy = head[1] - snake_head[1]
-                        distance = math.hypot(dx, dy)
-                        if distance > 0:
-                            self.direction = (dx / distance, dy / distance)
+                if len(gusano.cuerpo) > len(self.cuerpo):
+                    cabeza_gusano = gusano.cuerpo[0]
+                    distancia_peligro = math.hypot(cabeza[0] - cabeza_gusano[0], cabeza[1] - cabeza_gusano[1])
+                    if distancia_peligro < 80:
+                        peligro_cercano = True
+                        # Alejarse del peligro
+                        dx = cabeza[0] - cabeza_gusano[0]
+                        dy = cabeza[1] - cabeza_gusano[1]
+                        distancia = math.hypot(dx, dy)
+                        if distancia > 0:
+                            self.direccion = (dx / distancia, dy / distancia)
                         break
 
-            if not danger_nearby and random.random() < 0.02:  # Change direction occasionally
-                self.direction = random.choice([(1, 0), (-1, 0), (0, 1), (0, -1)])
+            if not peligro_cercano and random.random() < 0.1:  # Cambiar dirección ocasionalmente
+                self.direccion = random.choice([(1, 0), (-1, 0), (0, 1), (0, -1)])
 
-def create_food():
-    return (random.randint(0, WIDTH), random.randint(0, HEIGHT))
+def crear_comida():
+    return (random.randint(0, ANCHO), random.randint(0, ALTO))
 
-def draw_score(screen, snakes):
-    font = pygame.font.Font(None, 36)
-    for i, snake in enumerate(snakes):
-        if snake.alive:
-            player_type = "AI" if snake.is_ai else "Human"
-            score_text = font.render(f"Player {i+1} ({player_type}): {snake.score}", True, snake.color)
-            screen.blit(score_text, (10, 10 + i * 40))
+def dibujar_puntuacion(pantalla, gusanos):
+    fuente = pygame.font.Font(None, 24)
+    for i, gusano in enumerate(gusanos):
+        if gusano.vivo:
+            tipo_jugador = "IA" if gusano.es_ia else "Humano"
+            texto_puntuacion = fuente.render(f"Jugador {i+1} ({tipo_jugador}): {gusano.puntuacion}", True, gusano.color)
+            pantalla.blit(texto_puntuacion, (10, 10 + i * 30))
 
-def draw_game_over(screen, snakes):
-    # Semi-transparent overlay
-    overlay = pygame.Surface((WIDTH, HEIGHT))
-    overlay.set_alpha(128)
-    overlay.fill(BLACK)
-    screen.blit(overlay, (0, 0))
+def dibujar_fin_juego(pantalla, gusanos):
+    # Superposición semitransparente
+    superposicion = pygame.Surface((ANCHO, ALTO))
+    superposicion.set_alpha(128)
+    superposicion.fill(NEGRO)
+    pantalla.blit(superposicion, (0, 0))
 
-    # Game Over text
-    font_large = pygame.font.Font(None, 72)
-    font_medium = pygame.font.Font(None, 48)
-    font_small = pygame.font.Font(None, 36)
+    # Texto de fin de juego
+    fuente_grande = pygame.font.Font(None, 72)
+    fuente_media = pygame.font.Font(None, 48)
+    fuente_pequeña = pygame.font.Font(None, 36)
 
-    game_over_text = font_large.render("GAME OVER", True, WHITE)
-    screen.blit(game_over_text, (WIDTH//2 - game_over_text.get_width()//2, HEIGHT//2 - 150))
+    texto_fin = fuente_grande.render("FIN DEL JUEGO", True, BLANCO)
+    pantalla.blit(texto_fin, (ANCHO//2 - texto_fin.get_width()//2, ALTO//2 - 150))
 
-    # Leaderboard
-    leaderboard_text = font_medium.render("Final Scores:", True, WHITE)
-    screen.blit(leaderboard_text, (WIDTH//2 - leaderboard_text.get_width()//2, HEIGHT//2 - 80))
+    # Tabla de puntuaciones
+    texto_tabla = fuente_media.render("Tabla de puntuaciones", True, BLANCO)
+    pantalla.blit(texto_tabla, (ANCHO//2 - texto_tabla.get_width()//2, ALTO//2 - 80))
 
-    # Sort snakes by score
-    sorted_snakes = sorted(snakes, key=lambda s: s.score, reverse=True)
+    # Ordenar gusanos por puntuación
+    gusanos_ordenados = sorted(gusanos, key=lambda g: g.puntuacion, reverse=True)
 
-    for i, snake in enumerate(sorted_snakes):
-        player_type = "AI" if snake.is_ai else "Human"
-        color_name = ["Green", "Blue", "Yellow", "Purple"][PLAYER_COLORS.index(snake.color)]
-        score_text = font_small.render(f"{i+1}. {color_name} ({player_type}): {snake.score}", True, snake.color)
-        screen.blit(score_text, (WIDTH//2 - score_text.get_width()//2, HEIGHT//2 - 40 + i * 30))
+    for i, gusano in enumerate(gusanos_ordenados):
+        tipo_jugador = "IA" if gusano.es_ia else "Humano"
+        nombre_color = ["Verde", "Azul", "Amarillo", "Púrpura"][COLORES_JUGADORES.index(gusano.color) if gusano.color in COLORES_JUGADORES else 0]
+        texto_puntuacion = fuente_pequeña.render(f"{i+1}. {nombre_color} ({tipo_jugador}): {gusano.puntuacion}", True, gusano.color)
+        pantalla.blit(texto_puntuacion, (ANCHO//2 - texto_puntuacion.get_width()//2, ALTO//2 - 40 + i * 30))
 
-    # Restart instruction
-    restart_text = font_small.render("Press R to restart or ESC to quit", True, WHITE)
-    screen.blit(restart_text, (WIDTH//2 - restart_text.get_width()//2, HEIGHT - 50))
+    # Instrucciones de opciones
+    texto_opciones = fuente_pequeña.render("R: Reiniciar | M: Menú | ESC: Salir", True, BLANCO)
+    pantalla.blit(texto_opciones, (ANCHO//2 - texto_opciones.get_width()//2, ALTO - 50))
 
-def main():
-    # Create players
-    snakes = []
-    num_players = 4  # Can be changed to 1-4
+def dibujar_pantalla_victoria(pantalla, puntuacion_jugador):
+    # Superposición semitransparente
+    superposicion = pygame.Surface((ANCHO, ALTO))
+    superposicion.set_alpha(128)
+    superposicion.fill(NEGRO)
+    pantalla.blit(superposicion, (0, 0))
 
-    for i in range(num_players):
-        x = random.randint(100, WIDTH - 100)
-        y = random.randint(100, HEIGHT - 100)
-        is_ai = i >= 1  # First player is human, others are AI
-        snakes.append(Snake(x, y, PLAYER_COLORS[i], is_ai))
+    # Texto de victoria
+    fuente_grande = pygame.font.Font(None, 72)
+    fuente_media = pygame.font.Font(None, 48)
+    fuente_pequeña = pygame.font.Font(None, 36)
 
-    food_list = [create_food() for _ in range(50)]
+    texto_victoria = fuente_grande.render("¡GANASTE!", True, (255, 215, 0))
+    pantalla.blit(texto_victoria, (ANCHO//2 - texto_victoria.get_width()//2, ALTO//2 - 150))
 
-    running = True
-    game_over = False
+    # Puntuación
+    texto_puntuacion = fuente_media.render(f"Puntuación: {puntuacion_jugador}", True, BLANCO)
+    pantalla.blit(texto_puntuacion, (ANCHO//2 - texto_puntuacion.get_width()//2, ALTO//2 - 50))
 
-    while running:
-        clock.tick(FPS)
+    # Instrucciones de opciones
+    texto_opciones = fuente_pequeña.render("R: Reiniciar | M: Menú | ESC: Salir", True, BLANCO)
+    pantalla.blit(texto_opciones, (ANCHO//2 - texto_opciones.get_width()//2, ALTO - 50))
+
+def dibujar_menu_principal(pantalla):
+    pantalla.fill(NEGRO)
+    
+    fuente_grande = pygame.font.Font(None, 72)
+    fuente_media = pygame.font.Font(None, 48)
+    fuente_pequeña = pygame.font.Font(None, 36)
+
+    texto_titulo = fuente_grande.render("Slither.io Clon", True, (0, 255, 0))
+    pantalla.blit(texto_titulo, (ANCHO//2 - texto_titulo.get_width()//2, 80))
+
+    texto_jugar = fuente_media.render("1. JUGAR", True, BLANCO)
+    pantalla.blit(texto_jugar, (ANCHO//2 - texto_jugar.get_width()//2, 250))
+
+    texto_personalizar = fuente_media.render("2. PERSONALIZAR", True, BLANCO)
+    pantalla.blit(texto_personalizar, (ANCHO//2 - texto_personalizar.get_width()//2, 350))
+
+    texto_salir = fuente_media.render("3. SALIR", True, BLANCO)
+    pantalla.blit(texto_salir, (ANCHO//2 - texto_salir.get_width()//2, 450))
+
+    instrucciones = fuente_pequeña.render("Presiona 1, 2 o 3", True, (100, 100, 100))
+    pantalla.blit(instrucciones, (ANCHO//2 - instrucciones.get_width()//2, 550))
+
+    pygame.display.flip()
+
+def dibujar_pantalla_personalizacion(pantalla, indice_color_seleccionado):
+    pantalla.fill(NEGRO)
+    
+    fuente_grande = pygame.font.Font(None, 60)
+    fuente_media = pygame.font.Font(None, 36)
+
+    texto_titulo = fuente_grande.render("Selecciona tu color", True, BLANCO)
+    pantalla.blit(texto_titulo, (ANCHO//2 - texto_titulo.get_width()//2, 30))
+
+    # Mostrar opciones de color en una cuadrícula de 2x4
+    colores_por_fila = 4
+    tamaño_caja_color = 60
+    espaciado_color = 30
+    inicio_x = (ANCHO - (colores_por_fila * (tamaño_caja_color + espaciado_color))) // 2
+    inicio_y = 130
+
+    for i, (nombre, color) in enumerate(COLORES_DISPONIBLES):
+        fila = i // colores_por_fila
+        columna = i % colores_por_fila
+        
+        x = inicio_x + columna * (tamaño_caja_color + espaciado_color)
+        y = inicio_y + fila * (tamaño_caja_color + espaciado_color)
+
+        # Dibujar caja de color
+        if i == indice_color_seleccionado:
+            pygame.draw.rect(pantalla, BLANCO, (x - 5, y - 5, tamaño_caja_color + 10, tamaño_caja_color + 10), 3)
+        
+        pygame.draw.rect(pantalla, color, (x, y, tamaño_caja_color, tamaño_caja_color))
+        
+        # Dibujar número
+        texto_numero = fuente_media.render(str(i + 1), True, BLANCO)
+        pantalla.blit(texto_numero, (x + tamaño_caja_color//2 - texto_numero.get_width()//2, 
+                                   y + tamaño_caja_color//2 - texto_numero.get_height()//2))
+
+    instrucciones = fuente_media.render("Presiona 1-8 para seleccionar | ENTER para confirmar", True, (100, 100, 100))
+    pantalla.blit(instrucciones, (ANCHO//2 - instrucciones.get_width()//2, 500))
+
+    pygame.display.flip()
+
+def menu_principal():
+    """Bucle del menú principal"""
+    while True:
+        dibujar_menu_principal(pantalla)
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return "salir"
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_1:
+                    return "jugar"
+                elif event.key == pygame.K_2:
+                    return "personalizar"
+                elif event.key == pygame.K_3:
+                    return "salir"
+        
+        reloj.tick(FPS)
+
+def personalizar_jugador():
+    """Pantalla de personalización de color"""
+    color_seleccionado = 0
+    
+    while True:
+        dibujar_pantalla_personalizacion(pantalla, color_seleccionado)
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return None
+            elif event.type == pygame.KEYDOWN:
+                if pygame.K_1 <= event.key <= pygame.K_8:
+                    indice = event.key - pygame.K_1
+                    if indice < len(COLORES_DISPONIBLES):
+                        color_seleccionado = indice
+                elif event.key == pygame.K_RETURN:
+                    return COLORES_DISPONIBLES[color_seleccionado][1]
+                elif event.key == pygame.K_ESCAPE:
+                    return None
+        
+        reloj.tick(FPS)
+
+def bucle_juego(color_jugador):
+    """Bucle principal del juego"""
+    # Crear jugadores
+    gusanos = []
+    num_jugadores = 4
+
+    for i in range(num_jugadores):
+        x = random.randint(100, ANCHO - 100)
+        y = random.randint(100, ALTO - 100)
+        es_ia = i >= 1  # Primer jugador es humano, los demás son IA
+        color = color_jugador if i == 0 else COLORES_JUGADORES[i]
+        gusanos.append(Gusano(x, y, color, es_ia))
+
+    lista_comida = [crear_comida() for _ in range(50)]
+
+    ejecutando = True
+    estado_juego = "jugando"  # "jugando", "fin_juego", "victoria"
+
+    while ejecutando:
+        reloj.tick(FPS)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
-            elif event.type == pygame.KEYDOWN and game_over:
+                pygame.quit()
+                return "salir"
+            elif event.type == pygame.KEYDOWN and estado_juego != "jugando":
                 if event.key == pygame.K_r:
-                    # Restart game
-                    return main()
-                elif event.key == pygame.K_ESCAPE:
-                    running = False
+                    # Reiniciar juego
+                    return "jugar"
+                elif event.key == pygame.K_m:
+                    # Volver al menú
+                    return "menu"
+                elif event.key == pygame.K_ESCAPE or event.key == pygame.K_3:
+                    # Salir
+                    return "salir"
 
-        if not game_over:
-            # Handle player input
-            keys = pygame.key.get_pressed()
+        if estado_juego == "jugando":
+            # Manejar entrada del jugador
+            teclas = pygame.key.get_pressed()
 
-            # Player 1 controls (WASD)
-            if not snakes[0].is_ai and snakes[0].alive:
-                if keys[pygame.K_a]:
-                    snakes[0].direction = (-1, 0)
-                elif keys[pygame.K_d]:
-                    snakes[0].direction = (1, 0)
-                elif keys[pygame.K_w]:
-                    snakes[0].direction = (0, -1)
-                elif keys[pygame.K_s]:
-                    snakes[0].direction = (0, 1)
+            # Controles Jugador 1 (WASD) - permitir movimiento diagonal
+            if not gusanos[0].es_ia and gusanos[0].vivo:
+                dx = 0
+                dy = 0
+                if teclas[pygame.K_a]:
+                    dx = -1
+                if teclas[pygame.K_d]:
+                    dx = 1
+                if teclas[pygame.K_w]:
+                    dy = -1
+                if teclas[pygame.K_s]:
+                    dy = 1
+                if dx != 0 or dy != 0:
+                    longitud = math.hypot(dx, dy)
+                    gusanos[0].direccion = (dx / longitud, dy / longitud)
 
-            # Player 2 controls (Arrow keys)
-            if len(snakes) > 1 and not snakes[1].is_ai and snakes[1].alive:
-                if keys[pygame.K_LEFT]:
-                    snakes[1].direction = (-1, 0)
-                elif keys[pygame.K_RIGHT]:
-                    snakes[1].direction = (1, 0)
-                elif keys[pygame.K_UP]:
-                    snakes[1].direction = (0, -1)
-                elif keys[pygame.K_DOWN]:
-                    snakes[1].direction = (0, 1)
+            # Controles Jugador 2 (Flechas)
+            if len(gusanos) > 1 and not gusanos[1].es_ia and gusanos[1].vivo:
+                if teclas[pygame.K_LEFT]:
+                    gusanos[1].direccion = (-1, 0)
+                elif teclas[pygame.K_RIGHT]:
+                    gusanos[1].direccion = (1, 0)
+                elif teclas[pygame.K_UP]:
+                    gusanos[1].direccion = (0, -1)
+                elif teclas[pygame.K_DOWN]:
+                    gusanos[1].direccion = (0, 1)
 
-            # Player 3 controls (IJKL)
-            if len(snakes) > 2 and not snakes[2].is_ai and snakes[2].alive:
-                if keys[pygame.K_j]:
-                    snakes[2].direction = (-1, 0)
-                elif keys[pygame.K_l]:
-                    snakes[2].direction = (1, 0)
-                elif keys[pygame.K_i]:
-                    snakes[2].direction = (0, -1)
-                elif keys[pygame.K_k]:
-                    snakes[2].direction = (0, 1)
+            # Controles Jugador 3 (IJKL)
+            if len(gusanos) > 2 and not gusanos[2].es_ia and gusanos[2].vivo:
+                if teclas[pygame.K_j]:
+                    gusanos[2].direccion = (-1, 0)
+                elif teclas[pygame.K_l]:
+                    gusanos[2].direccion = (1, 0)
+                elif teclas[pygame.K_i]:
+                    gusanos[2].direccion = (0, -1)
+                elif teclas[pygame.K_k]:
+                    gusanos[2].direccion = (0, 1)
 
-            # Player 4 controls (Numpad)
-            if len(snakes) > 3 and not snakes[3].is_ai and snakes[3].alive:
-                if keys[pygame.K_KP4]:
-                    snakes[3].direction = (-1, 0)
-                elif keys[pygame.K_KP6]:
-                    snakes[3].direction = (1, 0)
-                elif keys[pygame.K_KP8]:
-                    snakes[3].direction = (0, -1)
-                elif keys[pygame.K_KP5]:
-                    snakes[3].direction = (0, 1)
+            # Controles Jugador 4 (Teclado numérico)
+            if len(gusanos) > 3 and not gusanos[3].es_ia and gusanos[3].vivo:
+                if teclas[pygame.K_KP4]:
+                    gusanos[3].direccion = (-1, 0)
+                elif teclas[pygame.K_KP6]:
+                    gusanos[3].direccion = (1, 0)
+                elif teclas[pygame.K_KP8]:
+                    gusanos[3].direccion = (0, -1)
+                elif teclas[pygame.K_KP5]:
+                    gusanos[3].direccion = (0, 1)
 
-            # AI movement
-            for snake in snakes:
-                if snake.is_ai:
-                    snake.ai_move(food_list, snakes)
+            # Movimiento de IA
+            for gusano in gusanos:
+                if gusano.es_ia:
+                    gusano.movimiento_ia(lista_comida, gusanos)
 
-            # Move all snakes
-            for snake in snakes:
-                snake.move()
+            # Mover todos los gusanos
+            for gusano in gusanos:
+                gusano.mover()
 
-            # Check collisions
-            for snake in snakes:
-                snake.check_collision(snakes, food_list)
+            # Revisar colisiones
+            for gusano in gusanos:
+                gusano.revisar_colision(gusanos, lista_comida)
 
-            # Spawn new food
-            while len(food_list) < MAX_FOOD:
-                food_list.append(create_food())
+            # Generar nueva comida
+            while len(lista_comida) < COMIDA_MAXIMA:
+                lista_comida.append(crear_comida())
 
-            # Check if all human players are dead
-            human_alive = any(not snake.is_ai and snake.alive for snake in snakes)
-            if not human_alive:
-                game_over = True
+            # Revisar condición de victoria
+            if gusanos[0].vivo:
+                otros_vivos = sum(1 for g in gusanos[1:] if g.vivo)
+                if otros_vivos == 0:
+                    estado_juego = "victoria"
+            else:
+                # Revisar si todos los humanos están muertos (fin del juego)
+                humano_vivo = any(not gusano.es_ia and gusano.vivo for gusano in gusanos)
+                if not humano_vivo:
+                    estado_juego = "fin_juego"
 
-        # Draw everything
-        screen.fill(BLACK)
+        # Dibujar todo
+        pantalla.fill(NEGRO)
 
-        # Draw food
-        for food in food_list:
-            pygame.draw.circle(screen, RED, (int(food[0]), int(food[1])), FOOD_SIZE)
+        # Dibujar comida
+        for comida in lista_comida:
+            pygame.draw.circle(pantalla, ROJO, (int(comida[0]), int(comida[1])), TAMAÑO_COMIDA)
 
-        # Draw snakes
-        for snake in snakes:
-            snake.draw(screen)
+        # Dibujar gusanos
+        for gusano in gusanos:
+            gusano.dibujar(pantalla)
 
-        # Draw scores
-        draw_score(screen, snakes)
+        # Dibujar puntuaciones
+        dibujar_puntuacion(pantalla, gusanos)
 
-        # Draw game over screen if needed
-        if game_over:
-            draw_game_over(screen, snakes)
+        # Dibujar pantalla de fin del juego o victoria si es necesario
+        if estado_juego == "fin_juego":
+            dibujar_fin_juego(pantalla, gusanos)
+        elif estado_juego == "victoria":
+            dibujar_pantalla_victoria(pantalla, gusanos[0].puntuacion)
 
         pygame.display.flip()
 
-    pygame.quit()
+    return "salir"
+
+def sesion_principal():
+    """Sesión principal que maneja navegación del menú"""
+    color_jugador = VERDE
+    
+    while True:
+        resultado = menu_principal()
+        
+        if resultado == "salir":
+            pygame.quit()
+            break
+        elif resultado == "jugar":
+            resultado = bucle_juego(color_jugador)
+            if resultado == "salir":
+                pygame.quit()
+                break
+            elif resultado == "personalizar":
+                nuevo_color = personalizar_jugador()
+                if nuevo_color:
+                    color_jugador = nuevo_color
+        elif resultado == "personalizar":
+            nuevo_color = personalizar_jugador()
+            if nuevo_color:
+                color_jugador = nuevo_color
+
+def principal():
+    sesion_principal()
 
 if __name__ == "__main__":
-    main()
+    principal()
