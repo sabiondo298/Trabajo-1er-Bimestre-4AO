@@ -37,7 +37,7 @@ MAGENTA = (255, 0, 255)
 # Colores de jugadores para IA
 COLORES_JUGADORES = [VERDE, AZUL, AMARILLO, PURPURA]
 
-# Colores disponibles para personalización
+
 COLORES_DISPONIBLES = [
     ("Verde", VERDE),
     ("Azul", AZUL),
@@ -59,17 +59,13 @@ if audio_disponible:
     try:
         sonido_comer = pygame.mixer.Sound('eat.wav')
         sonido_muerte = pygame.mixer.Sound('death.wav')
-        musica_fondo = pygame.mixer.Sound('background.wav')
-        musica_fondo.play(-1)  # Reproducir música de fondo en bucle
     except:
         print("Archivos de sonido no encontrados. Ejecutando sin sonido.")
         sonido_comer = None
         sonido_muerte = None
-        musica_fondo = None
 else:
     sonido_comer = None
     sonido_muerte = None
-    musica_fondo = None
 
 class Gusano:
     def __init__(self, x, y, color, es_ia=False):
@@ -151,7 +147,7 @@ class Gusano:
             if math.hypot(cabeza[0] - comida[0], cabeza[1] - comida[1]) < TAMAÑO_COMIDA + 5:
                 lista_comida.remove(comida)
                 self.crecer()
-                if sonido_comer:
+                if not self.es_ia and sonido_comer:
                     sonido_comer.play()
 
     def movimiento_ia(self, lista_comida, todos_gusanos):
