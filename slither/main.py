@@ -13,7 +13,7 @@ except pygame.error:
     audio_disponible = False
 
 # Constantes
-ANCHO, ALTO = 800, 600
+ANCHO, ALTO = 1400, 720
 FPS = 60
 VELOCIDAD_GUSANO = 3
 TAMAÑO_COMIDA = 5
@@ -40,13 +40,13 @@ COLORES_JUGADORES = [VERDE, AZUL, AMARILLO, PURPURA]
 # Colores disponibles para personalización
 COLORES_DISPONIBLES = [
     ("Verde", VERDE),
-    ("Azul", AZUL),
-    ("Amarillo", AMARILLO),
-    ("Púrpura", PURPURA),
     ("Naranja", NARANJA),
     ("Rosa", ROSA),
     ("Lima", LIMA),
-    ("Magenta", MAGENTA)
+    ("Rojo", ROJO),
+    ("Magenta", MAGENTA),
+    ("Cian", CIAN),
+    ("Blanco", BLANCO)
 ]
 
 # Configurar la pantalla
@@ -80,6 +80,7 @@ class Gusano:
         self.vivo = True
         self.es_ia = es_ia
         self.comida_objetivo = None
+        self.punto_objetivo = None
 
     def mover(self):
         if not self.vivo:
@@ -153,6 +154,9 @@ class Gusano:
                 self.crecer()
                 if sonido_comer:
                     sonido_comer.play()
+                # Resetear punto objetivo para IA después de comer
+                if self.es_ia:
+                    self.punto_objetivo = None
 
     def movimiento_ia(self, lista_comida, todos_gusanos):
         if not self.es_ia or not self.vivo:
@@ -160,48 +164,52 @@ class Gusano:
 
         cabeza = self.cuerpo[0]
 
-        # Encontrar comida más cercana o a veces aleatoria
-        comida_objetivo = None
-        if random.random() < 0.7:  # 70% de probabilidad de apuntar al más cercano
-            distancia_minima = float('inf')
-            for comida in lista_comida:
-                distancia = math.hypot(cabeza[0] - comida[0], cabeza[1] - comida[1])
-                if distancia < distancia_minima:
-                    distancia_minima = distancia
-                    comida_objetivo = comida
-        else:  # 30% de probabilidad de apuntar a comida aleatoria
-            if lista_comida:
-                comida_objetivo = random.choice(lista_comida)
+        # Revisar gusanos peligrosos cercanos
+        peligro_cerca = False
+        for gusano in todos_gusanos:
+            if gusano == self or not gusano.vivo:
+                continue
+            if len(gusano.cuerpo) > len(self.cuerpo) * 1.1:  # Gusano más grande es peligroso
+                cabeza_gusano = gusano.cuerpo[0]
+                distancia_peligro = math.hypot(cabeza[0] - cabeza_gusano[0], cabeza[1] - cabeza_gusano[1])
+                if distancia_peligro < 100:  # Peligrosamente cerca
+                    peligro_cerca = True
+                    # Alejarse del peligro
+                    dx = cabeza[0] - cabeza_gusano[0]
+                    dy = cabeza[1] - cabeza_gusano[1]
+                    distancia = math.hypot(dx, dy)
+                    if distancia > 0:
+                        self.direccion = (dx / distancia, dy / distancia)
+                    break
 
-        if comida_objetivo:
-            # Revisar gusanos peligrosos cercanos
-            peligro_cerca = False
-            for gusano in todos_gusanos:
-                if gusano == self or not gusano.vivo:
-                    continue
-                if len(gusano.cuerpo) > len(self.cuerpo) * 1.1:  # Gusano más grande es peligroso
-                    cabeza_gusano = gusano.cuerpo[0]
-                    distancia_peligro = math.hypot(cabeza[0] - cabeza_gusano[0], cabeza[1] - cabeza_gusano[1])
-                    if distancia_peligro < 100:  # Peligrosamente cerca
-                        peligro_cerca = True
-                        # Alejarse del peligro
-                        dx = cabeza[0] - cabeza_gusano[0]
-                        dy = cabeza[1] - cabeza_gusano[1]
-                        distancia = math.hypot(dx, dy)
-                        if distancia > 0:
-                            self.direccion = (dx / distancia, dy / distancia)
-                        break
+        if not peligro_cerca:
+            # Si no hay punto objetivo o está cerca del actual, elegir nuevo
+            if self.punto_objetivo is None or math.hypot(cabeza[0] - self.punto_objetivo[0], cabeza[1] - self.punto_objetivo[1]) < 20:
+                # Buscar comida dentro del radio de 80 píxeles
+                comida_en_radio = []
+                for comida in lista_comida:
+                    distancia = math.hypot(cabeza[0] - comida[0], cabeza[1] - comida[1])
+                    if distancia <= 80:
+                        comida_en_radio.append((distancia, comida))
+                
+                if comida_en_radio:
+                    # Elegir una comida aleatoria dentro del radio
+                    self.punto_objetivo = random.choice(comida_en_radio)[1]
+                else:
+                    # Elegir punto aleatorio en radio de 80 píxeles
+                    angulo = random.uniform(0, 2 * math.pi)
+                    radio = 80
+                    self.punto_objetivo = (cabeza[0] + radio * math.cos(angulo), cabeza[1] + radio * math.sin(angulo))
 
-            if not peligro_cerca:
-                # Moverse hacia comida objetivo
-                dx = comida_objetivo[0] - cabeza[0]
-                dy = comida_objetivo[1] - cabeza[1]
-                distancia = math.hypot(dx, dy)
+            # Moverse hacia el punto objetivo
+            dx = self.punto_objetivo[0] - cabeza[0]
+            dy = self.punto_objetivo[1] - cabeza[1]
+            distancia = math.hypot(dx, dy)
 
-                if distancia > 0:
-                    self.direccion = (dx / distancia, dy / distancia)
+            if distancia > 0:
+                self.direccion = (dx / distancia, dy / distancia)
         else:
-            # Movimiento aleatorio si no hay comida, pero intenta evitar peligro
+            # Movimiento aleatorio si hay peligro cercano
             peligro_cercano = False
             for gusano in todos_gusanos:
                 if gusano == self or not gusano.vivo:
@@ -289,65 +297,36 @@ def dibujar_pantalla_victoria(pantalla, puntuacion_jugador):
     pantalla.blit(texto_opciones, (ANCHO//2 - texto_opciones.get_width()//2, ALTO - 50))
 
 def dibujar_menu_principal(pantalla):
-    pantalla.fill(NEGRO)
-    
-    fuente_grande = pygame.font.Font(None, 72)
-    fuente_media = pygame.font.Font(None, 48)
-    fuente_pequeña = pygame.font.Font(None, 36)
-
-    texto_titulo = fuente_grande.render("Slither.io Clon", True, (0, 255, 0))
-    pantalla.blit(texto_titulo, (ANCHO//2 - texto_titulo.get_width()//2, 80))
-
-    texto_jugar = fuente_media.render("1. JUGAR", True, BLANCO)
-    pantalla.blit(texto_jugar, (ANCHO//2 - texto_jugar.get_width()//2, 250))
-
-    texto_personalizar = fuente_media.render("2. PERSONALIZAR", True, BLANCO)
-    pantalla.blit(texto_personalizar, (ANCHO//2 - texto_personalizar.get_width()//2, 350))
-
-    texto_salir = fuente_media.render("3. SALIR", True, BLANCO)
-    pantalla.blit(texto_salir, (ANCHO//2 - texto_salir.get_width()//2, 450))
-
-    instrucciones = fuente_pequeña.render("Presiona 1, 2 o 3", True, (100, 100, 100))
-    pantalla.blit(instrucciones, (ANCHO//2 - instrucciones.get_width()//2, 550))
+    try:
+        # Cargar la imagen del menú
+        imagen_menu = pygame.image.load('menuslither.png')
+        # Redimensionar la imagen al tamaño de la ventana
+        imagen_menu = pygame.transform.scale(imagen_menu, (ANCHO, ALTO))
+        # Dibujar la imagen
+        pantalla.blit(imagen_menu, (0, 0))
+    except:
+        # Si la imagen no se encuentra, mostrar pantalla negra
+        pantalla.fill(NEGRO)
+        fuente_media = pygame.font.Font(None, 48)
+        texto_error = fuente_media.render("Error: menuslither.png no encontrado", True, BLANCO)
+        pantalla.blit(texto_error, (ANCHO//2 - texto_error.get_width()//2, ALTO//2))
 
     pygame.display.flip()
 
 def dibujar_pantalla_personalizacion(pantalla, indice_color_seleccionado):
-    pantalla.fill(NEGRO)
-    
-    fuente_grande = pygame.font.Font(None, 60)
-    fuente_media = pygame.font.Font(None, 36)
-
-    texto_titulo = fuente_grande.render("Selecciona tu color", True, BLANCO)
-    pantalla.blit(texto_titulo, (ANCHO//2 - texto_titulo.get_width()//2, 30))
-
-    # Mostrar opciones de color en una cuadrícula de 2x4
-    colores_por_fila = 4
-    tamaño_caja_color = 60
-    espaciado_color = 30
-    inicio_x = (ANCHO - (colores_por_fila * (tamaño_caja_color + espaciado_color))) // 2
-    inicio_y = 130
-
-    for i, (nombre, color) in enumerate(COLORES_DISPONIBLES):
-        fila = i // colores_por_fila
-        columna = i % colores_por_fila
-        
-        x = inicio_x + columna * (tamaño_caja_color + espaciado_color)
-        y = inicio_y + fila * (tamaño_caja_color + espaciado_color)
-
-        # Dibujar caja de color
-        if i == indice_color_seleccionado:
-            pygame.draw.rect(pantalla, BLANCO, (x - 5, y - 5, tamaño_caja_color + 10, tamaño_caja_color + 10), 3)
-        
-        pygame.draw.rect(pantalla, color, (x, y, tamaño_caja_color, tamaño_caja_color))
-        
-        # Dibujar número
-        texto_numero = fuente_media.render(str(i + 1), True, BLANCO)
-        pantalla.blit(texto_numero, (x + tamaño_caja_color//2 - texto_numero.get_width()//2, 
-                                   y + tamaño_caja_color//2 - texto_numero.get_height()//2))
-
-    instrucciones = fuente_media.render("Presiona 1-8 para seleccionar | ENTER para confirmar", True, (100, 100, 100))
-    pantalla.blit(instrucciones, (ANCHO//2 - instrucciones.get_width()//2, 500))
+    try:
+        # Cargar la imagen de personalización
+        imagen_personalizacion = pygame.image.load('personalizarslither.png')
+        # Redimensionar la imagen al tamaño de la ventana
+        imagen_personalizacion = pygame.transform.scale(imagen_personalizacion, (ANCHO, ALTO))
+        # Dibujar la imagen
+        pantalla.blit(imagen_personalizacion, (0, 0))
+    except:
+        # Si la imagen no se encuentra, mostrar pantalla negra
+        pantalla.fill(NEGRO)
+        fuente_media = pygame.font.Font(None, 48)
+        texto_error = fuente_media.render("Error: personalizarslither.png no encontrado", True, BLANCO)
+        pantalla.blit(texto_error, (ANCHO//2 - texto_error.get_width()//2, ALTO//2))
 
     pygame.display.flip()
 
