@@ -1,79 +1,77 @@
-# Slither.io Clone
+# Slither Juan
+Una recreacion simple del popular juego Slither.io usando Pygame.
 
-A simple recreation of the popular game Slither.io using Pygame.
+## Caracteristicas
 
-## Features
+- **Multijugador**: Soporte para hasta 4 jugadores locales
+- **Serpientes IA**: Serpientes controladas por computadora que compiten con los jugadores
+- **Sistema de Puntuacion**: Puntos otorgados por comer comida
+- **Controles Suaves**: Movimiento fluido para todos los jugadores
+- **Deteccion de Colisiones**: Colisiones realistas de serpientes
+- **Efectos de Sonido**: Retroalimentacion de audio (cuando los archivos de sonido estan disponibles)
 
-- **Multiplayer**: Support for up to 4 local players
-- **AI Snakes**: Computer-controlled snakes that compete with players
-- **Scoring System**: Points awarded for eating food
-- **Smooth Controls**: Responsive movement for all players
-- **Collision Detection**: Realistic snake collisions
-- **Sound Effects**: Audio feedback (when sound files are available)
+## Controles
 
-## Controls
+### Jugador 1 (Jugador Humano)
+- W: Moverse Arriba
+- A: Moverse Izquierda
+- S: Moverse Abajo
+- D: Moverse Derecha
 
-### Player 1 (Green Snake)
-- W: Move Up
-- A: Move Left
-- S: Move Down
-- D: Move Right
+### Jugador 2 (Serpiente Azul - IA por defecto)
+- Flecha Arriba: Moverse Arriba
+- Flecha Izquierda: Moverse Izquierda
+- Flecha Abajo: Moverse Abajo
+- Flecha Derecha: Moverse Derecha
 
-### Player 2 (Blue Snake - AI by default)
-- ↑: Move Up
-- ←: Move Left
-- ↓: Move Down
-- →: Move Right
+### Jugador 3 (Serpiente Amarilla - IA por defecto)
+- I: Moverse Arriba
+- J: Moverse Izquierda
+- K: Moverse Abajo
+- L: Moverse Derecha
 
-### Player 3 (Yellow Snake - AI by default)
-- I: Move Up
-- J: Move Left
-- K: Move Down
-- L: Move Right
+### Jugador 4 (Serpiente Morada - IA por defecto)
+- Numpad 8: Moverse Arriba
+- Numpad 4: Moverse Izquierda
+- Numpad 5: Moverse Abajo
+- Numpad 6: Moverse Derecha
 
-### Player 4 (Purple Snake - AI by default)
-- Numpad 8: Move Up
-- Numpad 4: Move Left
-- Numpad 5: Move Down
-- Numpad 6: Move Right
+## Como Jugar
 
-## How to Play
+1. Controla tu serpiente para comer las bolitas de comida roja o violeta
+2. Tu serpiente crece mas cuanto mas comida comes
+3. Evita chocar con otras  con tu caeza
+4. El juego continua hasta que todos los jugadores humanos mueran
+5. Intenta obtener la puntuacion mas alta!
 
-1. Control your snake to eat the red food pellets
-2. Your snake grows longer as you eat more food
-3. Avoid colliding with other snakes
-4. The game continues until all human players die
-5. Try to get the highest score!
-
-## Requirements
+## Requisitos
 
 - Python 3.x
 - Pygame library
 
-## Installation
+## Instalacion
 
-1. Install Pygame:
+1. Instalar Pygame:
    ```
    pip install pygame
    ```
 
-2. Run the game:
+2. Para correr el juego:
    ```
    python slither/main.py
    ```
 
-## Sound Effects
+## Efectos de Sonido
 
-To enable sound effects, add the following WAV files to the slither/ directory:
-- `eat.wav`: Sound when eating food
-- `death.wav`: Sound when a snake dies
-- `background.wav`: Background music
+Para habilitar los efectos de sonido, agrega los siguientes archivos WAV al directorio slither/:
+- `eat.wav`: Sonido cuando comes comida
+- `death.wav`: Sonido cuando una serpiente muere
 
-## Customization
+## Personalizacion
 
-You can modify the following constants in slither/main.py:
-- `WIDTH`, `HEIGHT`: Screen dimensions
-- `FPS`: Game speed
-- `SNAKE_SPEED`: How fast snakes move
-- `MAX_FOOD`: Maximum number of food pellets
-- `num_players`: Number of players (1-4)
+Puedes modificar las siguientes constantes en slither/main.py:
+- `WIDTH`, `HEIGHT`: Dimensiones de la pantalla
+- `FPS`: Velocidad del juego
+- `SNAKE_SPEED`: Que tan rapido se mueven las serpientes
+- `MAX_FOOD`: Numero maximo de bolitas de comida
+- `num_players`: Numero de jugadores (1-4)

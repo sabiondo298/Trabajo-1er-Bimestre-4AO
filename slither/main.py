@@ -51,7 +51,7 @@ COLORES_DISPONIBLES = [
 
 # Configurar la pantalla
 pantalla = pygame.display.set_mode((ANCHO, ALTO))
-pygame.display.set_caption("Slither.io Clon")
+pygame.display.set_caption("Slither Juan")
 reloj = pygame.time.Clock()
 
 # Cargar sonidos
@@ -145,9 +145,11 @@ class Gusano:
 
         # Revisar colisión con comida
         for comida in lista_comida[:]:
-            if math.hypot(cabeza[0] - comida[0], cabeza[1] - comida[1]) < TAMAÑO_COMIDA + 5:
+            if math.hypot(cabeza[0] - comida['pos'][0], cabeza[1] - comida['pos'][1]) < TAMAÑO_COMIDA + 5:
                 lista_comida.remove(comida)
-                self.crecer()
+                # Sumar los puntos correspondientes
+                for _ in range(comida['puntos']):
+                    self.crecer()
                 if not self.es_ia and sonido_comer:
                     sonido_comer.play()
                 # Resetear punto objetivo para IA después de comer
@@ -184,9 +186,9 @@ class Gusano:
                 # Buscar comida dentro del radio de 80 píxeles
                 comida_en_radio = []
                 for comida in lista_comida:
-                    distancia = math.hypot(cabeza[0] - comida[0], cabeza[1] - comida[1])
+                    distancia = math.hypot(cabeza[0] - comida['pos'][0], cabeza[1] - comida['pos'][1])
                     if distancia <= 80:
-                        comida_en_radio.append((distancia, comida))
+                        comida_en_radio.append((distancia, comida['pos']))
                 
                 if comida_en_radio:
                     # Elegir una comida aleatoria dentro del radio
@@ -227,7 +229,12 @@ class Gusano:
                 self.direccion = random.choice([(1, 0), (-1, 0), (0, 1), (0, -1)])
 
 def crear_comida():
-    return (random.randint(0, ANCHO), random.randint(0, ALTO))
+    x, y = random.randint(0, ANCHO), random.randint(0, ALTO)
+    # Aproximadamente 1 de cada 20 es violeta (5 puntos)
+    if random.random() < 0.05:  # 5% de probabilidad
+        return {'pos': (x, y), 'tipo': 'violeta', 'puntos': 5, 'color': PURPURA}
+    else:
+        return {'pos': (x, y), 'tipo': 'rojo', 'puntos': 1, 'color': ROJO}
 
 def dibujar_puntuacion(pantalla, gusanos):
     fuente = pygame.font.Font(None, 24)
@@ -266,10 +273,10 @@ def dibujar_fin_juego(pantalla, gusanos):
         pantalla.blit(texto_puntuacion, (ANCHO//2 - texto_puntuacion.get_width()//2, ALTO//2 - 40 + i * 30))
 
     # Instrucciones de opciones
-    texto_opciones = fuente_pequeña.render("R: Reiniciar | M: Menú | ESC: Salir", True, BLANCO)
+    texto_opciones = fuente_pequeña.render("M: Menú | ESC: Salir", True, BLANCO)
     pantalla.blit(texto_opciones, (ANCHO//2 - texto_opciones.get_width()//2, ALTO - 50))
 
-def dibujar_pantalla_victoria(pantalla, puntuacion_jugador):
+def dibujar_pantalla_victoria(pantalla, gusanos, ganador):
     # Superposición semitransparente
     superposicion = pygame.Surface((ANCHO, ALTO))
     superposicion.set_alpha(128)
@@ -281,15 +288,21 @@ def dibujar_pantalla_victoria(pantalla, puntuacion_jugador):
     fuente_media = pygame.font.Font(None, 48)
     fuente_pequeña = pygame.font.Font(None, 36)
 
-    texto_victoria = fuente_grande.render("¡GANASTE!", True, (255, 215, 0))
+    nombre_jugador = f"Jugador {ganador + 1}"
+    if not gusanos[ganador].es_ia:
+        nombre_jugador += " (Humano)"
+    else:
+        nombre_jugador += " (IA)"
+    
+    texto_victoria = fuente_grande.render(f"¡{nombre_jugador} ha ganado!", True, (255, 215, 0))
     pantalla.blit(texto_victoria, (ANCHO//2 - texto_victoria.get_width()//2, ALTO//2 - 150))
 
     # Puntuación
-    texto_puntuacion = fuente_media.render(f"Puntuación: {puntuacion_jugador}", True, BLANCO)
+    texto_puntuacion = fuente_media.render(f"Puntuación: {gusanos[ganador].puntuacion}", True, BLANCO)
     pantalla.blit(texto_puntuacion, (ANCHO//2 - texto_puntuacion.get_width()//2, ALTO//2 - 50))
 
     # Instrucciones de opciones
-    texto_opciones = fuente_pequeña.render("R: Reiniciar | M: Menú | ESC: Salir", True, BLANCO)
+    texto_opciones = fuente_pequeña.render("M: Menú | ESC: Salir", True, BLANCO)
     pantalla.blit(texto_opciones, (ANCHO//2 - texto_opciones.get_width()//2, ALTO - 50))
 
 def dibujar_menu_principal(pantalla):
@@ -326,6 +339,46 @@ def dibujar_pantalla_personalizacion(pantalla, indice_color_seleccionado):
 
     pygame.display.flip()
 
+def seleccionar_modo_juego():
+    """Mostrar las 4 opciones de juego"""
+    while True:
+        pantalla.fill(NEGRO)
+        fuente_titulo = pygame.font.Font(None, 72)
+        fuente_texto = pygame.font.Font(None, 36)
+
+        texto_titulo = fuente_titulo.render("Selecciona modo de juego", True, BLANCO)
+        texto_opcion1 = fuente_texto.render("1: Jugador vs 3 IAs", True, BLANCO)
+        texto_opcion2 = fuente_texto.render("2: PvP contra 1 jugador", True, BLANCO)
+        texto_opcion3 = fuente_texto.render("3: 3 jugadores FFA", True, BLANCO)
+        texto_opcion4 = fuente_texto.render("4: 4 jugadores FFA", True, BLANCO)
+        texto_escape = fuente_texto.render("ESC: Volver al menú", True, BLANCO)
+
+        pantalla.blit(texto_titulo, (ANCHO//2 - texto_titulo.get_width()//2, ALTO//2 - 120))
+        pantalla.blit(texto_opcion1, (ANCHO//2 - texto_opcion1.get_width()//2, ALTO//2 - 40))
+        pantalla.blit(texto_opcion2, (ANCHO//2 - texto_opcion2.get_width()//2, ALTO//2))
+        pantalla.blit(texto_opcion3, (ANCHO//2 - texto_opcion3.get_width()//2, ALTO//2 + 40))
+        pantalla.blit(texto_opcion4, (ANCHO//2 - texto_opcion4.get_width()//2, ALTO//2 + 80))
+        pantalla.blit(texto_escape, (ANCHO//2 - texto_escape.get_width()//2, ALTO//2 + 140))
+
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return None
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_1:
+                    return (1, 3)
+                elif event.key == pygame.K_2:
+                    return (2, 0)
+                elif event.key == pygame.K_3:
+                    return (3, 0)
+                elif event.key == pygame.K_4:
+                    return (4, 0)
+                elif event.key == pygame.K_ESCAPE:
+                    return None
+
+        reloj.tick(FPS)
+
 def menu_principal():
     """Bucle del menú principal"""
     while True:
@@ -333,14 +386,16 @@ def menu_principal():
         
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                return "salir"
+                return "salir", None
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
-                    return "jugar"
+                    modo = seleccionar_modo_juego()
+                    if modo:
+                        return "jugar", modo
                 elif event.key == pygame.K_2:
-                    return "personalizar"
+                    return "personalizar", None
                 elif event.key == pygame.K_3:
-                    return "salir"
+                    return "salir", None
         
         reloj.tick(FPS)
 
@@ -366,23 +421,35 @@ def personalizar_jugador():
         
         reloj.tick(FPS)
 
-def bucle_juego(color_jugador):
+def bucle_juego(color_jugador, humanos=1, ias=3):
     """Bucle principal del juego"""
+    # Cargar imagen de fondo desde la carpeta padre
+    try:
+        ruta_fondo = os.path.join(os.path.dirname(__file__), '..', 'piso.png')
+        imagen_fondo = pygame.image.load(ruta_fondo)
+        imagen_fondo = pygame.transform.scale(imagen_fondo, (ANCHO, ALTO))
+    except:
+        imagen_fondo = None
+
+    num_jugadores = humanos + ias
+
     # Crear jugadores
     gusanos = []
-    num_jugadores = 4
-
     for i in range(num_jugadores):
         x = random.randint(100, ANCHO - 100)
         y = random.randint(100, ALTO - 100)
-        es_ia = i >= 1  # Primer jugador es humano, los demás son IA
-        color = color_jugador if i == 0 else COLORES_JUGADORES[i]
+        es_ia = i >= humanos
+        if i == 0:
+            color = color_jugador
+        else:
+            color = COLORES_JUGADORES[i]
         gusanos.append(Gusano(x, y, color, es_ia))
 
     lista_comida = [crear_comida() for _ in range(50)]
 
     ejecutando = True
     estado_juego = "jugando"  # "jugando", "fin_juego", "victoria"
+    ganador = None
 
     while ejecutando:
         reloj.tick(FPS)
@@ -392,10 +459,7 @@ def bucle_juego(color_jugador):
                 pygame.quit()
                 return "salir"
             elif event.type == pygame.KEYDOWN and estado_juego != "jugando":
-                if event.key == pygame.K_r:
-                    # Reiniciar juego
-                    return "jugar"
-                elif event.key == pygame.K_m:
+                if event.key == pygame.K_m:
                     # Volver al menú
                     return "menu"
                 elif event.key == pygame.K_ESCAPE or event.key == pygame.K_3:
@@ -473,22 +537,25 @@ def bucle_juego(color_jugador):
                 lista_comida.append(crear_comida())
 
             # Revisar condición de victoria
-            if gusanos[0].vivo:
-                otros_vivos = sum(1 for g in gusanos[1:] if g.vivo)
-                if otros_vivos == 0:
-                    estado_juego = "victoria"
-            else:
-                # Revisar si todos los humanos están muertos (fin del juego)
-                humano_vivo = any(not gusano.es_ia and gusano.vivo for gusano in gusanos)
-                if not humano_vivo:
-                    estado_juego = "fin_juego"
+            gusanos_vivos = [i for i, g in enumerate(gusanos) if g.vivo]
+            humanos_vivos = [i for i, g in enumerate(gusanos) if not g.es_ia and g.vivo]
+
+            if len(gusanos_vivos) == 1:
+                # Solo queda un gusano vivo - victoria para ese jugador
+                estado_juego = "victoria"
+                ganador = gusanos_vivos[0]
+                # Todos los humanos murieron - fin del juego
+                estado_juego = "fin_juego"
 
         # Dibujar todo
-        pantalla.fill(NEGRO)
+        if imagen_fondo:
+            pantalla.blit(imagen_fondo, (0, 0))
+        else:
+            pantalla.fill(NEGRO)
 
         # Dibujar comida
         for comida in lista_comida:
-            pygame.draw.circle(pantalla, ROJO, (int(comida[0]), int(comida[1])), TAMAÑO_COMIDA)
+            pygame.draw.circle(pantalla, comida['color'], (int(comida['pos'][0]), int(comida['pos'][1])), TAMAÑO_COMIDA)
 
         # Dibujar gusanos
         for gusano in gusanos:
@@ -501,7 +568,7 @@ def bucle_juego(color_jugador):
         if estado_juego == "fin_juego":
             dibujar_fin_juego(pantalla, gusanos)
         elif estado_juego == "victoria":
-            dibujar_pantalla_victoria(pantalla, gusanos[0].puntuacion)
+            dibujar_pantalla_victoria(pantalla, gusanos, ganador)
 
         pygame.display.flip()
 
@@ -512,21 +579,18 @@ def sesion_principal():
     color_jugador = VERDE
     
     while True:
-        resultado = menu_principal()
+        accion, valor = menu_principal()
         
-        if resultado == "salir":
+        if accion == "salir":
             pygame.quit()
             break
-        elif resultado == "jugar":
-            resultado = bucle_juego(color_jugador)
+        elif accion == "jugar":
+            resultado = bucle_juego(color_jugador, *valor)
             if resultado == "salir":
                 pygame.quit()
                 break
-            elif resultado == "personalizar":
-                nuevo_color = personalizar_jugador()
-                if nuevo_color:
-                    color_jugador = nuevo_color
-        elif resultado == "personalizar":
+            # Vuelve al menú en cualquier otro caso
+        elif accion == "personalizar":
             nuevo_color = personalizar_jugador()
             if nuevo_color:
                 color_jugador = nuevo_color
