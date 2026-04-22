@@ -276,30 +276,34 @@ def dibujar_fin_juego(pantalla, gusanos):
     texto_opciones = fuente_pequeña.render("M: Menú | ESC: Salir", True, BLANCO)
     pantalla.blit(texto_opciones, (ANCHO//2 - texto_opciones.get_width()//2, ALTO - 50))
 
-def dibujar_pantalla_victoria(pantalla, gusanos, ganador):
+def dibujar_pantalla_victoria(pantalla, gusanos, resultado, modo_juego):
     # Superposición semitransparente
     superposicion = pygame.Surface((ANCHO, ALTO))
     superposicion.set_alpha(128)
     superposicion.fill(NEGRO)
     pantalla.blit(superposicion, (0, 0))
 
-    # Texto de victoria
+    # Texto de victoria/derrota
     fuente_grande = pygame.font.Font(None, 72)
-    fuente_media = pygame.font.Font(None, 48)
     fuente_pequeña = pygame.font.Font(None, 36)
 
-    nombre_jugador = f"Jugador {ganador + 1}"
-    if not gusanos[ganador].es_ia:
-        nombre_jugador += " (Humano)"
+    # Modo 1 (1 vs 3 IAs): mostrar "GANASTE PAPU" o "perdiste..."
+    # Otros modos: mostrar "Gano el jugador X"
+    if modo_juego == 1:
+        if resultado == "victoria":
+            texto_victoria = fuente_grande.render("GANASTE PAPU", True, (255, 215, 0))  # Dorado
+        else:
+            texto_victoria = fuente_grande.render("perdiste...", True, ROJO)  # Rojo
     else:
-        nombre_jugador += " (IA)"
+        # Otros modos: mostrar quién ganó
+        nombre_jugador = f"jugador {resultado + 1}"
+        if not gusanos[resultado].es_ia:
+            nombre_jugador += " (Humano)"
+        else:
+            nombre_jugador += " (IA)"
+        texto_victoria = fuente_grande.render(f"ganaste {nombre_jugador}", True, (255, 215, 0))  # Dorado
     
-    texto_victoria = fuente_grande.render(f"¡{nombre_jugador} ha ganado!", True, (255, 215, 0))
-    pantalla.blit(texto_victoria, (ANCHO//2 - texto_victoria.get_width()//2, ALTO//2 - 150))
-
-    # Puntuación
-    texto_puntuacion = fuente_media.render(f"Puntuación: {gusanos[ganador].puntuacion}", True, BLANCO)
-    pantalla.blit(texto_puntuacion, (ANCHO//2 - texto_puntuacion.get_width()//2, ALTO//2 - 50))
+    pantalla.blit(texto_victoria, (ANCHO//2 - texto_victoria.get_width()//2, ALTO//2 - 50))
 
     # Instrucciones de opciones
     texto_opciones = fuente_pequeña.render("M: Menú | ESC: Salir", True, BLANCO)
@@ -421,7 +425,7 @@ def personalizar_jugador():
         
         reloj.tick(FPS)
 
-def bucle_juego(color_jugador, humanos=1, ias=3):
+def bucle_juego(color_jugador, humanos=1, ias=3, modo_juego=1):
     """Bucle principal del juego"""
     # Cargar imagen de fondo desde la carpeta padre
     try:
@@ -536,16 +540,30 @@ def bucle_juego(color_jugador, humanos=1, ias=3):
             while len(lista_comida) < COMIDA_MAXIMA:
                 lista_comida.append(crear_comida())
 
-            # Revisar condición de victoria
+            # Revisar condición de victoria/derrota
             gusanos_vivos = [i for i, g in enumerate(gusanos) if g.vivo]
             humanos_vivos = [i for i, g in enumerate(gusanos) if not g.es_ia and g.vivo]
 
-            if len(gusanos_vivos) == 1:
-                # Solo queda un gusano vivo - victoria para ese jugador
-                estado_juego = "victoria"
-                ganador = gusanos_vivos[0]
-                # Todos los humanos murieron - fin del juego
-                estado_juego = "fin_juego"
+            if modo_juego == 1:
+                # Modo 1 vs 3 IAs: apenas muera el humano, terminar
+                if not humanos_vivos:  # El jugador humano murió
+                    estado_juego = "derrota"
+                    resultado = "derrota"
+                elif len(gusanos_vivos) == 1:
+                    # Solo queda un gusano vivo y es el humano
+                    estado_juego = "victoria"
+                    resultado = "victoria"
+            else:
+                # Modos 2, 3, 4 (JCJ): terminar cuando no queden humanos o solo quede uno
+                if not humanos_vivos or len(humanos_vivos) == 1:
+                    # No hay humanos o solo queda uno - terminar la partida
+                    if len(gusanos_vivos) == 1:
+                        estado_juego = "victoria"
+                        resultado = gusanos_vivos[0]
+                    else:
+                        # Hay múltiples gusanos vivos, terminar con el de mayor puntuación
+                        estado_juego = "victoria"
+                        resultado = max(gusanos_vivos, key=lambda i: gusanos[i].puntuacion)
 
         # Dibujar todo
         if imagen_fondo:
@@ -567,8 +585,8 @@ def bucle_juego(color_jugador, humanos=1, ias=3):
         # Dibujar pantalla de fin del juego o victoria si es necesario
         if estado_juego == "fin_juego":
             dibujar_fin_juego(pantalla, gusanos)
-        elif estado_juego == "victoria":
-            dibujar_pantalla_victoria(pantalla, gusanos, ganador)
+        elif estado_juego == "victoria" or estado_juego == "derrota":
+            dibujar_pantalla_victoria(pantalla, gusanos, resultado, modo_juego)
 
         pygame.display.flip()
 
@@ -585,7 +603,8 @@ def sesion_principal():
             pygame.quit()
             break
         elif accion == "jugar":
-            resultado = bucle_juego(color_jugador, *valor)
+            modo = valor[0]  # El primer elemento es el modo de juego
+            resultado = bucle_juego(color_jugador, valor[0], valor[1], modo)
             if resultado == "salir":
                 pygame.quit()
                 break
