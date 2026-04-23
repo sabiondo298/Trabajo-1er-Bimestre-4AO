@@ -144,12 +144,13 @@ class Gusano:
                     return
 
         # Revisar colisión con comida
-        for comida in lista_comida[:]:
+        for comida in lista_comida[:]: # Si no se usara [:], iterar directamente sobre lista_comida y modificarla al mismo tiempo podría saltar elementos o causar excepciones.
             if math.hypot(cabeza[0] - comida['pos'][0], cabeza[1] - comida['pos'][1]) < TAMAÑO_COMIDA + 5:
                 lista_comida.remove(comida)
                 # Sumar los puntos correspondientes
                 for _ in range(comida['puntos']):
                     self.crecer()
+                # Que no haga ruido la ia al comer, solo el jugador
                 if not self.es_ia and sonido_comer:
                     sonido_comer.play()
                 # Resetear punto objetivo para IA después de comer
@@ -162,71 +163,31 @@ class Gusano:
 
         cabeza = self.cuerpo[0]
 
-        # Revisar gusanos peligrosos cercanos
-        peligro_cerca = False
-        for gusano in todos_gusanos:
-            if gusano == self or not gusano.vivo:
-                continue
-            if len(gusano.cuerpo) > len(self.cuerpo) * 1.1:  # Gusano más grande es peligroso
-                cabeza_gusano = gusano.cuerpo[0]
-                distancia_peligro = math.hypot(cabeza[0] - cabeza_gusano[0], cabeza[1] - cabeza_gusano[1])
-                if distancia_peligro < 100:  # Peligrosamente cerca
-                    peligro_cerca = True
-                    # Alejarse del peligro
-                    dx = cabeza[0] - cabeza_gusano[0]
-                    dy = cabeza[1] - cabeza_gusano[1]
-                    distancia = math.hypot(dx, dy)
-                    if distancia > 0:
-                        self.direccion = (dx / distancia, dy / distancia)
-                    break
+        # Si no hay punto objetivo o está cerca del actual, elegir nuevo
+        if self.punto_objetivo is None or math.hypot(cabeza[0] - self.punto_objetivo[0], cabeza[1] - self.punto_objetivo[1]) < 20:
+            # Buscar comida dentro del radio de 80 píxeles
+            comida_en_radio = []
+            for comida in lista_comida:
+                distancia = math.hypot(cabeza[0] - comida['pos'][0], cabeza[1] - comida['pos'][1])
+                if distancia <= 80:
+                    comida_en_radio.append((distancia, comida['pos']))
+            
+            if comida_en_radio:
+                # Elegir la comida más cercana dentro del radio
+                self.punto_objetivo = min(comida_en_radio, key=lambda x: x[0])[1]
+            else:
+                # Elegir punto aleatorio en radio de 80 píxeles
+                angulo = random.uniform(0, 2 * math.pi)
+                radio = 80
+                self.punto_objetivo = (cabeza[0] + radio * math.cos(angulo), cabeza[1] + radio * math.sin(angulo))
 
-        if not peligro_cerca:
-            # Si no hay punto objetivo o está cerca del actual, elegir nuevo
-            if self.punto_objetivo is None or math.hypot(cabeza[0] - self.punto_objetivo[0], cabeza[1] - self.punto_objetivo[1]) < 20:
-                # Buscar comida dentro del radio de 80 píxeles
-                comida_en_radio = []
-                for comida in lista_comida:
-                    distancia = math.hypot(cabeza[0] - comida['pos'][0], cabeza[1] - comida['pos'][1])
-                    if distancia <= 80:
-                        comida_en_radio.append((distancia, comida['pos']))
-                
-                if comida_en_radio:
-                    # Elegir una comida aleatoria dentro del radio
-                    self.punto_objetivo = random.choice(comida_en_radio)[1]
-                else:
-                    # Elegir punto aleatorio en radio de 80 píxeles
-                    angulo = random.uniform(0, 2 * math.pi)
-                    radio = 80
-                    self.punto_objetivo = (cabeza[0] + radio * math.cos(angulo), cabeza[1] + radio * math.sin(angulo))
+        # Moverse hacia el punto objetivo
+        dx = self.punto_objetivo[0] - cabeza[0]
+        dy = self.punto_objetivo[1] - cabeza[1]
+        distancia = math.hypot(dx, dy)
 
-            # Moverse hacia el punto objetivo
-            dx = self.punto_objetivo[0] - cabeza[0]
-            dy = self.punto_objetivo[1] - cabeza[1]
-            distancia = math.hypot(dx, dy)
-
-            if distancia > 0:
-                self.direccion = (dx / distancia, dy / distancia)
-        else:
-            # Movimiento aleatorio si hay peligro cercano
-            peligro_cercano = False
-            for gusano in todos_gusanos:
-                if gusano == self or not gusano.vivo:
-                    continue
-                if len(gusano.cuerpo) > len(self.cuerpo):
-                    cabeza_gusano = gusano.cuerpo[0]
-                    distancia_peligro = math.hypot(cabeza[0] - cabeza_gusano[0], cabeza[1] - cabeza_gusano[1])
-                    if distancia_peligro < 80:
-                        peligro_cercano = True
-                        # Alejarse del peligro
-                        dx = cabeza[0] - cabeza_gusano[0]
-                        dy = cabeza[1] - cabeza_gusano[1]
-                        distancia = math.hypot(dx, dy)
-                        if distancia > 0:
-                            self.direccion = (dx / distancia, dy / distancia)
-                        break
-
-            if not peligro_cercano and random.random() < 0.1:  # Cambiar dirección ocasionalmente
-                self.direccion = random.choice([(1, 0), (-1, 0), (0, 1), (0, -1)])
+        if distancia > 0:
+            self.direccion = (dx / distancia, dy / distancia)
 
 def crear_comida():
     x, y = random.randint(0, ANCHO), random.randint(0, ALTO)
