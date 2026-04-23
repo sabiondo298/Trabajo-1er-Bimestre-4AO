@@ -1,2 +1,2 @@
 # librerias usadas en el proyecto
-# 
+# Numpy, os, pygame, random, math, wave
